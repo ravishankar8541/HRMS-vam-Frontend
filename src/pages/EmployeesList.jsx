@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import { useEmployee } from "../context/EmployeeContext";
+import { EMPLOYMENT_STATUSES, employmentTone } from "../utils/employeeDirectory";
 
 const DESIGNATION_OPTIONS = [
   "Sales",
@@ -95,6 +96,7 @@ const EmployeesList = () => {
     setForm({
       name: emp.name || "",
       email: emp.email || "",
+      status: emp.status || "Active",
       designation: emp.designation || "",
       salary: emp.salary ?? "",
       dateOfJoining: emp.dateOfJoining ? emp.dateOfJoining.split("T")[0] : "",
@@ -143,7 +145,7 @@ const EmployeesList = () => {
       const formData = new FormData();
 
       const textFields = [
-        "name", "email", "designation", "salary", "dateOfJoining", "dateOfExit",
+        "name", "email", "designation", "status", "salary", "dateOfJoining", "dateOfExit",
         "dob", "gender", "address", "phoneNumber", "fatherName",
         "emergencyContactNumber", "contactRelation", "bankName",
         "accountNumber", "ifscCode", "maritalStatus", "adharNumber", "panNumber"
@@ -239,6 +241,18 @@ const EmployeesList = () => {
           onChange={handleChange}
           options={MARITAL_OPTIONS}
           placeholder="Select Marital Status"
+        />
+      );
+    }
+
+    if (field === "status") {
+      return (
+        <CustomDropdown
+          name="status"
+          value={form.status}
+          onChange={handleChange}
+          options={EMPLOYMENT_STATUSES}
+          placeholder="Select Status"
         />
       );
     }
@@ -368,6 +382,12 @@ const EmployeesList = () => {
                     <div>
                       <span className="text-gray-500 block text-xs">Designation</span>
                       <span className="font-semibold text-orange-600">{viewEmployee.designation || "—"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block text-xs">Status</span>
+                      <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded ${employmentTone(viewEmployee.status || "Active")}`}>
+                        {viewEmployee.status || "Active"}
+                      </span>
                     </div>
                     <div>
                       <span className="text-gray-500 block text-xs">Monthly Salary</span>
@@ -541,6 +561,7 @@ const EmployeesList = () => {
                     { key: "name", type: "text" },
                     { key: "email", type: "email" },
                     { key: "designation" },
+                    { key: "status" },
                     { key: "salary", type: "number" },
                     { key: "dob", type: "date" },
                     { key: "dateOfJoining", type: "date" },

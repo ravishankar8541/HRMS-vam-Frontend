@@ -203,6 +203,11 @@ export const EmployeeProvider = ({ children }) => {
     return res.data;
   };
 
+  const sendVaultSalarySlip = async (id) => {
+    const res = await axios.post(`${API_URL}/documents/salary-slips/${id}/send`, {});
+    return res.data;
+  };
+
   useEffect(() => {
     if (token) fetchEmployees();
   }, [token, fetchEmployees]);
@@ -236,6 +241,7 @@ export const EmployeeProvider = ({ children }) => {
         fetchAllDocuments,
         bulkDownloadZip,
         deleteDocument,
+        sendVaultSalarySlip,
       }}
     >
       {children}

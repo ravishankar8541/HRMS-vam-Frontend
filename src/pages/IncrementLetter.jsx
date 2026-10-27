@@ -34,7 +34,7 @@ const initialFormData = {
 };
 
 export default function IncrementLetter() {
-  const { employees, createIncrementLetter, sendIncrementLetterEmail } = useEmployee();
+  const { employees, createIncrementLetter, sendIncrementLetterEmail, fetchEmployees } = useEmployee();
   const location = useLocation();
   
   const [formData, setFormData] = useState(() => vaultForm(initialFormData, location.state?.vaultDocument, {}));
@@ -115,8 +115,15 @@ export default function IncrementLetter() {
     if (!recipientEmail) return alert("Please specify an email address.");
     try {
       setLoading(true);
-      await sendIncrementLetterEmail(savedDbId, recipientEmail);
-      alert(`Increment Letter successfully dispatched to ${recipientEmail}!`);
+      const result = await sendIncrementLetterEmail(savedDbId, recipientEmail);
+      await fetchEmployees();
+      if (result.salaryUpdated) {
+        alert(`Increment Letter sent to ${recipientEmail}. Monthly salary has been updated.`);
+      } else if (result.employeeMatched) {
+        alert(`Increment Letter sent to ${recipientEmail}. A newer increment is already applied, so the salary was left unchanged.`);
+      } else {
+        alert(`Increment Letter sent to ${recipientEmail}. Employee record not found, so the monthly salary was not updated.`);
+      }
       setShowEmailModal(false);
     } catch (err) {
       alert("Failed to send email: " + err.message);

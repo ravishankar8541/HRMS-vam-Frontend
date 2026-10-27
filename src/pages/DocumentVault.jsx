@@ -17,7 +17,7 @@ const types = [
 ];
 
 export default function DocumentVault() {
-  const { user, employees, fetchAllDocuments, bulkDownloadZip, deleteDocument } = useEmployee();
+  const { user, employees, fetchAllDocuments, bulkDownloadZip, deleteDocument, sendVaultSalarySlip } = useEmployee();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(null);
@@ -35,6 +35,9 @@ export default function DocumentVault() {
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [emailing, setEmailing] = useState(null);
+  const [emailTarget, setEmailTarget] = useState(null);
+  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
   const request = useRef(0);
@@ -43,6 +46,7 @@ export default function DocumentVault() {
     if (busy) return;
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       const routes = {'Onboarding Report':'/employees', 'Offer Letter':'/offer', 'Appointment Letter':'/appointment', 'Increment Letter':'/increment', 'Salary Slip':'/salary', 'Termination Letter':'/termination', 'FNF Settlement':'/fnf'};
       const route = routes[doc.docType];
@@ -60,6 +64,7 @@ export default function DocumentVault() {
     if (busy || !deleting) return;
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       await deleteDocument(deleting.docType, deleting._id);
       ++request.current;
@@ -73,6 +78,23 @@ export default function DocumentVault() {
       setDeleting(null);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const email = async (doc) => {
+    if (busy || emailing) return;
+    setEmailing(doc._id);
+    setError('');
+    setNotice('');
+    try {
+      const result = await sendVaultSalarySlip(doc._id);
+      setNotice(result.message || 'Salary slip emailed successfully');
+      setRefresh((value) => value + 1);
+    } catch (e) {
+      setError(e.response?.data?.message || e.message);
+    } finally {
+      setEmailing(null);
+      setEmailTarget(null);
     }
   };
 
@@ -365,6 +387,28 @@ export default function DocumentVault() {
           </p>
         )}
 
+        {notice && (
+          <p
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          >
+            <svg
+              className="h-4 w-4 shrink-0 text-emerald-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            {notice}
+          </p>
+        )}
+
         {/* Table */}
         <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-900/5">
           <div className="overflow-x-auto">
@@ -420,8 +464,13 @@ export default function DocumentVault() {
                       <div className="font-medium text-slate-900">
                         {d.docType}
                       </div>
-                      <div className="mt-0.5 text-xs text-slate-500">
+                      <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
                         {d.refNo}
+                        {d.archived === false && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
+                            Auto
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
@@ -474,6 +523,11 @@ export default function DocumentVault() {
                         </svg>
                       </button>
                       {staff && <>
+                        {d.docType === 'Salary Slip' && (
+                          <button type="button" disabled={busy || emailing === d._id} onClick={() => setEmailTarget(d)} className="rounded-lg border border-emerald-200 px-3 py-1.5 font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50">
+                            {emailing === d._id ? 'Sending…' : 'Email'}
+                          </button>
+                        )}
                         <button type="button" disabled={busy} onClick={() => edit(d)} className="rounded-lg border border-indigo-200 px-3 py-1.5 font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50">Edit</button>
                         <button type="button" disabled={busy} onClick={() => setDeleting(d)} className="rounded-lg border border-red-200 px-3 py-1.5 font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">Delete</button>
                       </>}
@@ -531,10 +585,22 @@ export default function DocumentVault() {
             </div>
           </div>
         )}
+        {emailTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="email-document-title" onKeyDown={e => {if (e.key === 'Escape' && !emailing) setEmailTarget(null);}}>
+            <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+              <h2 id="email-document-title" className="text-lg font-semibold text-slate-900">Email salary slip?</h2>
+              <p className="text-sm text-slate-600">Send the {emailTarget.refNo} payslip for {emailTarget.employeeName} to <strong>{emailTarget.email}</strong>? The exact PDF stored in the vault is attached.</p>
+              <div className="flex justify-end gap-3">
+                <button autoFocus type="button" disabled={!!emailing} onClick={() => setEmailTarget(null)} className="rounded-lg border px-4 py-2 disabled:opacity-50">Cancel</button>
+                <button type="button" disabled={!!emailing} onClick={() => email(emailTarget)} className="rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50">{emailing ? 'Sending…' : 'Send email'}</button>
+              </div>
+            </div>
+          </div>
+        )}
         {preview && (
           <DocumentPreview
             key={preview._id}
-            archived
+            archived={preview.archived !== false}
             type={preview.docType}
             id={preview._id}
             onClose={() => setPreview(null)}
