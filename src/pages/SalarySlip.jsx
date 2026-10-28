@@ -138,7 +138,7 @@ export default function SalarySlip() {
       <div className="no-print"><Sidebar /></div>
 
       {pdfId && <DocumentPreview type="Salary Slip" id={pdfId} onClose={()=>setPdfId(null)}/>}
-      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
+      <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 lg:pt-8">
         <VaultEditNotice />
         <div className="w-full">
           {/* Form Controls */}

@@ -214,7 +214,7 @@ const TerminationLetter = () => {
       <div className="no-print"><Sidebar /></div>
 
       {pdfId && <DocumentPreview type="Termination Letter" id={pdfId} onClose={()=>setPdfId(null)}/>}
-      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
+      <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 lg:pt-8 print:p-0">
         <VaultEditNotice />
         <div className="w-full">
           

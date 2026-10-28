@@ -190,7 +190,7 @@ const Onboarding = () => {
             </div>
 
             {pdfOpen && <DocumentPreview type="Onboarding Report" id={employeeId} onClose={()=>setPdfOpen(false)}/>}
-            <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
+            <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 lg:pt-8 print:p-0">
                 <div className="w-full">
 
                     {/* FORM SECTION - DESIGN MATCHED */}

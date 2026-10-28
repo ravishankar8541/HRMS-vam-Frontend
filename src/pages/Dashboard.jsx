@@ -65,7 +65,7 @@ export default function Dashboard() {
   return (
     <div className="flex min-h-screen bg-[#f5f6f8] font-sans text-slate-800 selection:bg-orange-100">
       <Sidebar />
-      <main className="min-w-0 flex-1 p-4 sm:p-6 xl:p-8">
+      <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 xl:pt-8">
         <div className="mx-auto max-w-[1600px] space-y-6">
           <header className="flex flex-wrap items-center justify-between gap-4">
       

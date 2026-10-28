@@ -152,7 +152,7 @@ export default function DocumentVault() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/40">
       <Sidebar />
-      <main className="min-w-0 flex-1 space-y-8 p-6 lg:p-8">
+      <main className="min-w-0 flex-1 space-y-8 p-6 pt-20 lg:pt-8">
         {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-1.5">

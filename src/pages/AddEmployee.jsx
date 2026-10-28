@@ -287,7 +287,7 @@ export default function AddEmployee() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
 
-      <main className="flex-1 p-6 lg:p-10">
+      <main className="flex-1 p-6 pt-20 lg:pt-10">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Add New Employee</h1>
         <p className="text-gray-600 mb-8">Enter employee details below</p>
 

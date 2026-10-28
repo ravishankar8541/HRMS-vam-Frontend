@@ -325,7 +325,7 @@ const EmployeesList = () => {
     <div className="flex min-h-screen bg-[#f5f6f8] text-slate-800">
       <Sidebar />
 
-      <main className="min-w-0 flex-1 p-4 sm:p-6 xl:p-8">
+      <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 xl:pt-8">
         <EmployeeDirectory employees={employees} loading={loading} onView={setViewEmployee} onEdit={handleEdit} onDelete={handleDelete} getPhotoUrl={getPhotoUrl} />
 
         {/* VIEW DETAILS MODAL */}

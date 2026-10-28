@@ -190,7 +190,7 @@ export default function FNF() {
   return (
     <div className="flex min-h-screen bg-slate-100 text-gray-800">
       <Sidebar />
-      <main className="min-w-0 flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+      <main className="min-w-0 flex-1 space-y-8 p-4 pt-20 sm:p-6 lg:pt-8">
         <VaultEditNotice />
         {/* Header */}
         <div className="space-y-1.5">
