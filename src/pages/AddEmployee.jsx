@@ -27,7 +27,7 @@ const DESIGNATION_OPTIONS = [
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const MARITAL_OPTIONS = ["Single", "Married"];
 
-// New: Dropdown options for Contact Relation (customize as needed)
+// New: Dropdown options for Contact Relation (customize as needed) new
 const CONTACT_RELATION_OPTIONS = [
   "Father",
   "Mother",
