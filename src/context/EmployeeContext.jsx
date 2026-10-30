@@ -134,6 +134,16 @@ export const EmployeeProvider = ({ children }) => {
     return res.data;
   };
 
+  const fetchSalaryAutoRun = async () => {
+    const res = await axios.get(`${API_URL}/salarySlip/auto-run`);
+    return res.data;
+  };
+
+  const runSalaryAutoEmails = async () => {
+    const res = await axios.post(`${API_URL}/salarySlip/auto-run/run`, {});
+    return res.data;
+  };
+
   const createTerminationRecord = async (formData) => {
     const res = await axios.post(`${API_URL}/termination-letters`, formData);
     return res.data;
@@ -203,6 +213,11 @@ export const EmployeeProvider = ({ children }) => {
     return res.data;
   };
 
+  const bulkDeleteDocuments = async (documents) => {
+    const res = await axios.post(`${API_URL}/documents/bulk-delete`, { documents });
+    return res.data;
+  };
+
   const sendVaultSalarySlip = async (id) => {
     const res = await axios.post(`${API_URL}/documents/salary-slips/${id}/send`, {});
     return res.data;
@@ -234,6 +249,8 @@ export const EmployeeProvider = ({ children }) => {
         sendIncrementLetterEmail,
         createSalarySlip,
         sendSalarySlipEmail,
+        fetchSalaryAutoRun,
+        runSalaryAutoEmails,
         createTerminationRecord,
         sendTerminationEmail,
         createFNFRecord,
@@ -241,6 +258,7 @@ export const EmployeeProvider = ({ children }) => {
         fetchAllDocuments,
         bulkDownloadZip,
         deleteDocument,
+        bulkDeleteDocuments,
         sendVaultSalarySlip,
       }}
     >

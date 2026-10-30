@@ -14,10 +14,50 @@ const DESIGNATION_OPTIONS = [
   "Branch Manager Sales", "Territory Manager Sales"
 ];
 
-const MONTH_OPTIONS = [
-  "Jan/2026", "Feb/2026", "Mar/2026", "Apr/2026", "May/2026", "Jun/2026",
-  "Jul/2026", "Aug/2026", "Sep/2026", "Oct/2026", "Nov/2026", "Dec/2026"
-];
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const monthsForYear = year => MONTH_LABELS.map(label => `${label}/${year}`);
+
+// The trailing year stays open for arrears (a December slip issued in January) and the
+// leading year for advance entries.
+const buildMonthGroups = selected => {
+  const current = new Date().getFullYear();
+  const groups = [current - 1, current, current + 1].map(year => ({ year, months: monthsForYear(year) }));
+  if (selected && !groups.some(group => group.months.includes(selected))) {
+    groups.unshift({ year: selected.split("/")[1] || "Other", months: [selected] });
+  }
+  return groups;
+};
+
+const IST_STAMP = {
+  day: '2-digit', month: 'short', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata',
+};
+
+const formatStamp = value => (value ? new Date(value).toLocaleString('en-IN', IST_STAMP) : '—');
+
+const AUTO_RUN_TONES = {
+  Delivered: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  'In progress': 'border-sky-200 bg-sky-50 text-sky-800',
+  Waiting: 'border-slate-200 bg-slate-50 text-slate-700',
+  'Retries exhausted': 'border-red-200 bg-red-50 text-red-800',
+};
+
+const describeAutoRun = (run, maxAttempts) => {
+  if (!run) return 'No payroll month has been processed on this server yet.';
+  if (run.state === 'Delivered') {
+    return `${run.monthYear} delivered on ${formatStamp(run.finishedAt)} — `
+      + `${run.sent} sent, ${run.failed} failed, ${run.alreadySent} had already received theirs`;
+  }
+  if (run.state === 'Retries exhausted') {
+    return `${run.monthYear} is incomplete after ${run.attempts} attempts — ${run.failed} failed`
+      + `${run.lastError ? `: ${run.lastError}` : ''}`;
+  }
+  if (run.state === 'In progress') {
+    return `${run.monthYear} is being processed right now — attempt ${run.attempts} of ${maxAttempts}`;
+  }
+  return `${run.monthYear} is queued and will go out on the next check`;
+};
 
 const formatINR = (val) => {
   const num = Math.round((Number(val) || 0) * 100) / 100;
@@ -28,7 +68,7 @@ const formatINR = (val) => {
 };
 
 export default function SalarySlip() {
-  const { employees, createSalarySlip, sendSalarySlipEmail } = useEmployee();
+  const { employees, createSalarySlip, sendSalarySlipEmail, fetchSalaryAutoRun, runSalaryAutoEmails } = useEmployee();
   const location = useLocation();
   const printRef = useRef(null);
 
@@ -42,6 +82,8 @@ export default function SalarySlip() {
 
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const monthGroups = buildMonthGroups(data.month);
 
   const inputClass = "block w-full rounded-md border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-orange-500/20 outline-none transition-all shadow-sm bg-white";
 
@@ -133,6 +175,42 @@ export default function SalarySlip() {
     }
   };
 
+  const [autoRun, setAutoRun] = useState(undefined);
+  const [autoRunTick, setAutoRunTick] = useState(0);
+  const [autoRunBusy, setAutoRunBusy] = useState(false);
+  const [autoRunNote, setAutoRunNote] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetchSalaryAutoRun()
+      .then(result => { if (active) setAutoRun(result); })
+      .catch(() => { if (active) setAutoRun(null); });
+    return () => { active = false; };
+  }, [fetchSalaryAutoRun, autoRunTick]);
+
+  const handleAutoRunNow = async () => {
+    if (autoRunBusy) return;
+    setAutoRunBusy(true);
+    setAutoRunNote("");
+    try {
+      const result = await runSalaryAutoEmails();
+      setAutoRunNote(result.message || "Run finished");
+      setAutoRunTick(value => value + 1);
+    } catch (error) {
+      setAutoRunNote(error.response?.data?.message || error.message);
+    } finally {
+      setAutoRunBusy(false);
+    }
+  };
+
+  const autoRunTone = AUTO_RUN_TONES[autoRun?.lastRun?.state] || AUTO_RUN_TONES.Waiting;
+  const autoRunSummary = autoRun === undefined
+    ? 'Loading the auto-email log…'
+    : autoRun === null
+      ? 'Auto-email log could not be loaded.'
+      : describeAutoRun(autoRun.lastRun, autoRun.maxAttempts);
+  const autoRunCadence = Math.max(1, Math.round((autoRun?.checkIntervalMs || 0) / 60000));
+
   return (
     <div className="flex bg-slate-100 min-h-screen">
       <div className="no-print"><Sidebar /></div>
@@ -141,6 +219,35 @@ export default function SalarySlip() {
       <main className="min-w-0 flex-1 p-4 pt-20 sm:p-6 lg:pt-8">
         <VaultEditNotice />
         <div className="w-full">
+          {/* Automatic payroll email status */}
+          <div className="no-print bg-white rounded-xl shadow-md p-6 border border-slate-200 mb-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold uppercase tracking-wide text-gray-800 border-l-4 border-orange-600 pl-3">
+                  Automatic Payslip Email
+                </h2>
+                <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                  {autoRun
+                    ? <>The <strong>{autoRun.targetMonthYear}</strong> payslips go to <strong>Active</strong> employees only. The server re-checks every {autoRunCadence} hour{autoRunCadence === 1 ? '' : 's'} and also catches up the moment it restarts, so a sleeping server cannot cause a missed month — and a month already delivered is never sent twice.</>
+                    : 'Reading the auto-email log from the server…'}
+                </p>
+                <div className={`mt-3 inline-block rounded-lg border px-3 py-2 text-sm font-medium ${autoRunTone}`}>
+                  {autoRunSummary}
+                </div>
+                {autoRunNote && (
+                  <p className="text-xs text-gray-600 mt-2">Last manual run: {autoRunNote}</p>
+                )}
+              </div>
+              <button
+                onClick={handleAutoRunNow}
+                disabled={autoRunBusy}
+                className="shrink-0 rounded-lg border border-orange-600 px-4 py-2 text-sm font-semibold text-orange-700 transition hover:bg-orange-50 disabled:opacity-50"
+              >
+                {autoRunBusy ? 'Checking…' : 'Run now'}
+              </button>
+            </div>
+          </div>
+
           {/* Form Controls */}
           <div className="no-print bg-white rounded-xl shadow-md p-8 border border-slate-200 mb-10">
             <h1 className="text-2xl font-bold mb-6 text-gray-800 border-l-4 border-orange-600 pl-4 uppercase tracking-wide">
@@ -198,7 +305,11 @@ export default function SalarySlip() {
                 <label className="block text-sm font-medium mb-1 text-gray-700">Salary Month *</label>
                 <select name="month" value={data.month} onChange={handleChange} className={inputClass} required>
                   <option value="">Select Month</option>
-                  {MONTH_OPTIONS.map(m => <option key={m} value={m}>{m}</option>)}
+                  {monthGroups.map(group => (
+                    <optgroup key={group.year} label={group.year}>
+                      {group.months.map(m => <option key={m} value={m}>{m}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
               <div>

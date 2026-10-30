@@ -17,10 +17,11 @@ const types = [
 ];
 
 export default function DocumentVault() {
-  const { user, employees, fetchAllDocuments, bulkDownloadZip, deleteDocument, sendVaultSalarySlip } = useEmployee();
+  const { user, employees, fetchAllDocuments, bulkDownloadZip, deleteDocument, bulkDeleteDocuments, sendVaultSalarySlip } = useEmployee();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [deletingMany, setDeletingMany] = useState(false);
   const staff = ['admin', 'hr'].includes(user?.role);
   const [filters, setFilters] = useState({
     type: 'ALL',
@@ -78,6 +79,36 @@ export default function DocumentVault() {
       setDeleting(null);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const removeSelected = async () => {
+    if (busy || !selected.length) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    const docs = documents.filter(doc => selected.includes(doc._id));
+    const ids = new Set(docs.map(doc => doc._id));
+    let removed = 0;
+    try {
+      // The endpoint caps one request at 100 entries.
+      for (let index = 0; index < docs.length; index += 100) {
+        const result = await bulkDeleteDocuments(
+          docs.slice(index, index + 100).map(doc => ({ _id: doc._id, docType: doc.docType }))
+        );
+        removed += result.removed || 0;
+      }
+      ++request.current;
+      setDocuments(prev => prev.filter(doc => !ids.has(doc._id)));
+      setSelected(prev => prev.filter(id => !ids.has(id)));
+      setPreview(prev => prev && ids.has(prev._id) ? null : prev);
+      setNotice(`${removed} ${removed === 1 ? 'document' : 'documents'} removed from the vault.`);
+    } catch (e) {
+      setError(e.response?.data?.message || e.message);
+    } finally {
+      setDeletingMany(false);
+      setBusy(false);
+      setRefresh(value => value + 1);
     }
   };
 
@@ -358,6 +389,28 @@ export default function DocumentVault() {
             </svg>
             Download all filtered ({documents.length})
           </button>
+          {staff && (
+            <button
+              disabled={loading || busy || !selected.length}
+              onClick={() => setDeletingMany(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+              Delete selected ({selected.length})
+            </button>
+          )}
           <span className="text-xs text-slate-500">
             {downloading
               ? 'Preparing downloads…'
@@ -573,6 +626,18 @@ export default function DocumentVault() {
           )}
         </div>
 
+        {deletingMany && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title" onKeyDown={e => {if (e.key === 'Escape' && !busy) setDeletingMany(false);}}>
+            <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+              <h2 id="bulk-delete-title" className="text-lg font-semibold text-slate-900">Delete {selected.length} {selected.length === 1 ? 'document' : 'documents'}?</h2>
+              <p className="text-sm text-slate-600">Remove the selected documents from the vault? Each one also disappears from its recipient’s vault. Previously sent emails are unaffected.</p>
+              <div className="flex justify-end gap-3">
+                <button autoFocus type="button" disabled={busy} onClick={() => setDeletingMany(false)} className="rounded-lg border px-4 py-2 disabled:opacity-50">Cancel</button>
+                <button type="button" disabled={busy} onClick={removeSelected} className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50">{busy ? 'Deleting…' : `Delete ${selected.length}`}</button>
+              </div>
+            </div>
+          </div>
+        )}
         {deleting && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-document-title" onKeyDown={e => {if (e.key === 'Escape' && !busy) setDeleting(null);}}>
             <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
